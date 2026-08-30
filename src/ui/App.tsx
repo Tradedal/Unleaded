@@ -1,101 +1,366 @@
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
+import type * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry";
+import { formatDistanceToNowStrict } from "date-fns";
+import { Array as Arr, Match, Option, pipe } from "effect";
+import { Box, type Instance, render, Text, useApp, useInput } from "ink";
+import Spinner from "ink-spinner";
+import type React from "react";
+import type { SortDir, SortKey } from "../domain/sorting.js";
+import type { AutoDevListing } from "../schema.js";
+import { createAppInputHandler, useAppAtomCommands } from "./appCommands.js";
 import {
-  RegistryContext,
-  Registry,
-  useAtomSet,
-  useAtomValue,
-} from '@effect-atom/atom-react';
-import { formatDistanceToNowStrict } from 'date-fns';
-import { Match } from 'effect';
-import { Box, Text, useApp, useInput, render, type Instance } from 'ink';
-import SelectInput from 'ink-select-input';
-import Spinner from 'ink-spinner';
-import React from 'react';
-import type { SortDir, SortKey } from '../domain/sorting.js';
-import type { AutoDevListing } from '../schema.js';
-import {
-  appendSearchCharAction,
-  applyModelFilterAction,
-  applyYearFilterAction,
-  cancelSearchAction,
-  clearModelFilterAction,
-  clearSearchAction,
-  clearYearFilterAction,
-  closeModelSelectAction,
-  closeYearSelectAction,
-  commitSearchAction,
-  deleteSearchCharAction,
+  brandItemsAtom,
+  fuelItemsAtom,
   headerAtom,
-  modelItemsAtom,
-  yearItemsAtom,
-  nextPageAction,
-  openModelSelectAction,
-  openYearSelectAction,
-  prevPageAction,
-  setSortKeyAction,
-  startSearchAction,
-  toggleCpoAction,
-  toggleSortDirAction,
-  visibleAtom,
-  loadingAtom,
+  loadFailedAtom,
   loadedCountAtom,
+  loadingAtom,
   loadingStatusAtom,
+  modelItemsAtom,
   viewStateAtom,
-} from './atoms.js';
+  visibleAtom,
+  yearItemsAtom,
+} from "./atoms.js";
 
 const link = (url: string, text: string) =>
-  process.stdout.isTTY
-    ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`
-    : text;
+  Match.value(process.stdout.isTTY).pipe(
+    Match.when(true, () => `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`),
+    Match.orElse(() => text),
+  );
 
 const googleVinLink = (vin: string) =>
   `https://www.google.com/search?q=${encodeURIComponent(vin)}`;
 
-const cpoFilterLabels = ['off', 'on'] as const;
-const cpoValueLabels = ['No', 'Yes'] as const;
+const cpoValueLabels = ["No", "Yes"] as const;
+const sortDirectionLabels: Record<SortDir, string> = { asc: "↑", desc: "↓" };
 
-const truncate = (value: string, width: number): string => {
-  if (width <= 0) {
-    return '';
-  }
-  if (value.length <= width) {
-    return value;
-  }
-  const limit = Math.max(0, width - 3);
-  return `${value.slice(0, limit)}...`;
+const truncate = (value: string, width: number): string =>
+  Match.value({ hasWidth: width > 0, fits: value.length <= width }).pipe(
+    Match.when({ hasWidth: false }, () => ""),
+    Match.when({ fits: true }, () => value),
+    Match.orElse(() => `${value.slice(0, Math.max(0, width - 3))}...`),
+  );
+
+type SelectItem<T extends string | number | null> = {
+  label: string;
+  value: T;
 };
 
+const MENU_LIMIT = 20;
+
+const selectColor = (selected: boolean): "cyan" | undefined =>
+  Match.value(selected).pipe(
+    Match.when(true, () => "cyan" as const),
+    Match.orElse(() => undefined),
+  );
+
+const selectMarker = (selected: boolean): string =>
+  Match.value(selected).pipe(
+    Match.when(true, () => "> "),
+    Match.orElse(() => "  "),
+  );
+
+const SelectMenu = <T extends string | number | null>({
+  items,
+  label,
+  selectedIndex,
+}: {
+  items: readonly SelectItem<T>[];
+  label: string;
+  selectedIndex: number;
+}): React.JSX.Element =>
+  Match.value(items.length).pipe(
+    Match.when(0, () => (
+      <Box marginBottom={1} flexDirection="column">
+        <Text color="yellow">{label}</Text>
+        <Text color="yellow">No matches available</Text>
+      </Box>
+    )),
+    Match.orElse(() => {
+      const maxStart = Math.max(0, items.length - MENU_LIMIT);
+      const windowStart = Math.max(
+        0,
+        Math.min(selectedIndex - Math.floor(MENU_LIMIT / 2), maxStart),
+      );
+      return (
+        <Box marginBottom={1} flexDirection="column">
+          <Text color="yellow">{label}</Text>
+          {pipe(
+            items,
+            Arr.drop(windowStart),
+            Arr.take(MENU_LIMIT),
+            Arr.map((item, index) => (
+              <Text
+                key={item.label}
+                color={selectColor(windowStart + index === selectedIndex)}
+              >
+                {selectMarker(windowStart + index === selectedIndex)}
+                {item.label}
+              </Text>
+            )),
+          )}
+        </Box>
+      );
+    }),
+  );
+
+type ControlColor = "cyan" | "magenta" | "yellow";
+
+const Shortcut: React.FC<{
+  keyName: string;
+  label: string;
+}> = ({ keyName, label }) => (
+  <Text>
+    <Text dimColor>[</Text>
+    <Text bold>{keyName}</Text>
+    <Text dimColor>]</Text>
+    {label}
+  </Text>
+);
+
+const Control: React.FC<{
+  emphasizeStatus?: boolean;
+  keyName: string;
+  label: string;
+  status: string;
+  width: number;
+}> = ({ emphasizeStatus = false, keyName, label, status, width }) => (
+  <Box flexDirection="column" width={width} flexShrink={0}>
+    <Shortcut keyName={keyName} label={label} />
+    <Text bold={emphasizeStatus} wrap="truncate-end">
+      {status}
+    </Text>
+  </Box>
+);
+
+const ControlGroup: React.FC<{
+  borderRight: boolean;
+  children: React.ReactNode;
+  color: ControlColor;
+  paddingLeft: number;
+  title: string;
+  width: number;
+}> = ({ borderRight, children, color, paddingLeft, title, width }) => (
+  <Box
+    flexDirection="column"
+    flexShrink={0}
+    width={width}
+    paddingLeft={paddingLeft}
+    paddingRight={1}
+    borderStyle="single"
+    borderTop={false}
+    borderBottom={false}
+    borderLeft={false}
+    borderRight={borderRight}
+    borderRightDimColor
+  >
+    <Text bold color={color}>
+      {title}
+    </Text>
+    <Box>{children}</Box>
+  </Box>
+);
+
 const Header: React.FC<{
-  sortKey: SortKey;
+  sortKey: SortKey | null;
   sortDir: SortDir;
   search: string;
   page: number;
+  filteredTotal: number;
   total: number;
   pageSize: number;
   cpoOnly: boolean;
+  brandFilter: string | null;
   modelFilter: string | null;
   yearFilter: number | null;
-}> = ({ sortKey, sortDir, search, page, total, pageSize, cpoOnly, modelFilter, yearFilter }) => {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const cpoStatus = cpoFilterLabels[Number(cpoOnly)];
-  const modelLabel = modelFilter ?? 'all';
-  const yearLabel = yearFilter ?? 'all';
+  fuelFilter: string | null;
+}> = ({
+  sortKey,
+  sortDir,
+  search,
+  page,
+  filteredTotal,
+  total,
+  pageSize,
+  cpoOnly,
+  brandFilter,
+  modelFilter,
+  yearFilter,
+  fuelFilter,
+}) => {
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
+  const sortDirection = sortDirectionLabels[sortDir];
   return (
-    <Box flexDirection="column" marginBottom={1}>
-      <Text bold color="cyan">
-        EV Search | Sort: {sortKey} ({sortDir}) | CPO: {cpoStatus} | Page{' '}
-        {page + 1}/{totalPages} | {total} results
-      </Text>
-      <Text dimColor>
-        [p]rice [m]iles [y]ear [l]isted | [/]search [c]lear | [o]CPO | [f]model [F]year | [x]clear | [n]ext [b]ack | [r]everse | [q]uit
-      </Text>
-      {search.length > 0 && <Text color="yellow">Filter: {search}</Text>}
-      <Text color="magenta">Model: {modelLabel} | Year: {yearLabel}</Text>
+    <Box flexDirection="column" marginTop={1} marginBottom={1}>
+      <Box>
+        <Text>
+          <Text bold color="cyan">
+            EV Search
+          </Text>
+          {"  "}
+          <Text dimColor>│</Text>
+          {"  "}Results:{" "}
+          <Text bold>
+            {filteredTotal}/{total}
+          </Text>
+          {"  "}
+          <Text dimColor>│</Text>
+          {"  "}Page:{" "}
+          <Text bold>
+            {page + 1}/{totalPages}
+          </Text>
+        </Text>
+      </Box>
+      <Box flexWrap="wrap" marginTop={1}>
+        <ControlGroup
+          title="SEARCH"
+          color="cyan"
+          width={20}
+          paddingLeft={0}
+          borderRight
+        >
+          <Control
+            keyName="/"
+            label="search"
+            status={pipe(
+              Option.some(search),
+              Option.filter((value) => value.length > 0),
+              Option.getOrElse(() => " "),
+            )}
+            width={11}
+          />
+          <Control keyName="c" label="lear" status=" " width={7} />
+        </ControlGroup>
+        <ControlGroup
+          title="FILTERS"
+          color="magenta"
+          width={48}
+          paddingLeft={1}
+          borderRight
+        >
+          <Control
+            keyName="B"
+            label="rand"
+            status={pipe(
+              brandFilter,
+              Option.fromNullishOr,
+              Option.getOrElse(() => " "),
+            )}
+            width={9}
+          />
+          <Control
+            keyName="f"
+            label="model"
+            status={pipe(
+              modelFilter,
+              Option.fromNullishOr,
+              Option.getOrElse(() => " "),
+            )}
+            width={10}
+          />
+          <Control
+            emphasizeStatus
+            keyName="F"
+            label="year"
+            status={pipe(
+              yearFilter,
+              Option.fromNullishOr,
+              Option.map((value) => `>${value}`),
+              Option.getOrElse(() => " "),
+            )}
+            width={9}
+          />
+          <Control
+            keyName="u"
+            label="fuel"
+            status={pipe(
+              fuelFilter,
+              Option.fromNullishOr,
+              Option.getOrElse(() => " "),
+            )}
+            width={9}
+          />
+          <Control
+            emphasizeStatus
+            keyName="o"
+            label="CPO"
+            status={Match.value(cpoOnly).pipe(
+              Match.when(true, () => "on"),
+              Match.orElse(() => " "),
+            )}
+            width={8}
+          />
+        </ControlGroup>
+        <ControlGroup
+          title="SORT"
+          color="yellow"
+          width={41}
+          paddingLeft={1}
+          borderRight
+        >
+          <Control
+            emphasizeStatus
+            keyName="p"
+            label="rice"
+            status={Match.value(sortKey).pipe(
+              Match.when("price", () => sortDirection),
+              Match.orElse(() => " "),
+            )}
+            width={9}
+          />
+          <Control
+            emphasizeStatus
+            keyName="m"
+            label="iles"
+            status={Match.value(sortKey).pipe(
+              Match.when("miles", () => sortDirection),
+              Match.orElse(() => " "),
+            )}
+            width={9}
+          />
+          <Control
+            emphasizeStatus
+            keyName="y"
+            label="ear"
+            status={Match.value(sortKey).pipe(
+              Match.when("year", () => sortDirection),
+              Match.orElse(() => " "),
+            )}
+            width={9}
+          />
+          <Control
+            emphasizeStatus
+            keyName="l"
+            label="isted"
+            status={Match.value(sortKey).pipe(
+              Match.when("listed", () => sortDirection),
+              Match.orElse(() => " "),
+            )}
+            width={11}
+          />
+        </ControlGroup>
+        <ControlGroup
+          title="NAV"
+          color="cyan"
+          width={29}
+          paddingLeft={1}
+          borderRight={false}
+        >
+          <Control
+            keyName="b/n"
+            label="page"
+            status={`${page + 1}/${totalPages}`}
+            width={11}
+          />
+          <Control keyName="x" label="reset" status=" " width={10} />
+          <Control keyName="q" label="uit" status=" " width={6} />
+        </ControlGroup>
+      </Box>
     </Box>
   );
 };
 
 const ListingRow: React.FC<{ listing: AutoDevListing }> = ({ listing }) => {
-  const created = new Date(listing.createdAt);
   const cpoLabel = cpoValueLabels[Number(listing.retailListing.cpo)];
   const locationText = `${listing.retailListing.city}, ${listing.retailListing.state}`;
   const vin = listing.vin;
@@ -104,26 +369,26 @@ const ListingRow: React.FC<{ listing: AutoDevListing }> = ({ listing }) => {
       <Box width={6}>
         <Text>{listing.vehicle.year}</Text>
       </Box>
-      <Box width={10}>
-        <Text>{truncate(listing.vehicle.make, 10)}</Text>
+      <Box width={14}>
+        <Text>{truncate(listing.vehicle.make, 14)}</Text>
       </Box>
       <Box width={12}>
         <Text>{truncate(String(listing.vehicle.model), 12)}</Text>
       </Box>
       <Box width={14}>
-        <Text>{truncate(String(listing.vehicle.trim ?? ''), 14)}</Text>
+        <Text>{truncate(String(listing.vehicle.trim ?? ""), 14)}</Text>
       </Box>
       <Box width={8}>
-        <Text>{truncate(listing.vehicle.exteriorColor ?? '', 8)}</Text>
+        <Text>{truncate(listing.vehicle.exteriorColor ?? "", 8)}</Text>
       </Box>
       <Box width={8}>
-        <Text>{listing.retailListing.miles ?? '?'}</Text>
+        <Text>{listing.retailListing.miles ?? "?"}</Text>
       </Box>
       <Box width={4}>
-        <Text>{listing.history?.accidentCount ?? '?'}</Text>
+        <Text>{listing.history?.accidentCount ?? "?"}</Text>
       </Box>
       <Box width={4}>
-        <Text>{listing.history?.ownerCount ?? '?'}</Text>
+        <Text>{listing.history?.ownerCount ?? "?"}</Text>
       </Box>
       <Box width={6}>
         <Text>{cpoLabel}</Text>
@@ -135,11 +400,11 @@ const ListingRow: React.FC<{ listing: AutoDevListing }> = ({ listing }) => {
         <Text>{truncate(locationText, 20)}</Text>
       </Box>
       <Box width={24}>
-        <Text>{truncate(listing.retailListing.dealer, 24)}</Text>
+        <Text>{truncate(listing.retailListing.dealer ?? "", 24)}</Text>
       </Box>
       <Box width={14}>
         <Text dimColor>
-          {formatDistanceToNowStrict(created, { addSuffix: true })}
+          {formatDistanceToNowStrict(listing.createdAt, { addSuffix: true })}
         </Text>
       </Box>
       <Box width={22}>
@@ -147,9 +412,9 @@ const ListingRow: React.FC<{ listing: AutoDevListing }> = ({ listing }) => {
       </Box>
       <Box width={24}>
         <Text>
-          {link(listing.retailListing.carfaxUrl, 'carfax')}{' '}
-          {link(listing.retailListing.primaryImage, 'image')}{' '}
-          {link(googleVinLink(vin), 'vin')}
+          {link(listing.retailListing.carfaxUrl, "carfax")}{" "}
+          {link(listing.retailListing.primaryImage, "image")}{" "}
+          {link(googleVinLink(vin), "vin")}
         </Text>
       </Box>
     </Box>
@@ -161,7 +426,7 @@ const TableHeader: React.FC = () => (
     <Box width={6}>
       <Text bold>Year</Text>
     </Box>
-    <Box width={10}>
+    <Box width={14}>
       <Text bold>Make</Text>
     </Box>
     <Box width={12}>
@@ -211,128 +476,157 @@ export const App: React.FC = () => {
   const header = useAtomValue(headerAtom);
   const visible = useAtomValue(visibleAtom);
   const modelItems = useAtomValue(modelItemsAtom);
+  const fuelItems = useAtomValue(fuelItemsAtom);
   const yearItems = useAtomValue(yearItemsAtom);
   const view = useAtomValue(viewStateAtom);
   const searchMode = view.searchMode;
   const searchInput = view.searchInput;
+  const brandSelectMode = view.brandSelectMode;
   const modelSelectMode = view.modelSelectMode;
   const yearSelectMode = view.yearSelectMode;
+  const fuelSelectMode = view.fuelSelectMode;
   const loading = useAtomValue(loadingAtom);
+  const loadFailed = useAtomValue(loadFailedAtom);
   const loadedCount = useAtomValue(loadedCountAtom);
   const loadingStatus = useAtomValue(loadingStatusAtom);
+  const brandItems = useAtomValue(brandItemsAtom);
+  const commands = useAppAtomCommands();
+  const selectedIndex = view.selectedIndex;
 
-  const setSortKey = useAtomSet(setSortKeyAction);
-  const toggleSortDir = useAtomSet(toggleSortDirAction);
-  const nextPage = useAtomSet(nextPageAction);
-  const prevPage = useAtomSet(prevPageAction);
-  const toggleCpo = useAtomSet(toggleCpoAction);
-  const clearSearch = useAtomSet(clearSearchAction);
-  const startSearch = useAtomSet(startSearchAction);
-  const cancelSearch = useAtomSet(cancelSearchAction);
-  const commitSearch = useAtomSet(commitSearchAction);
-  const appendSearchChar = useAtomSet(appendSearchCharAction);
-  const deleteSearchChar = useAtomSet(deleteSearchCharAction);
-  const openModelSelect = useAtomSet(openModelSelectAction);
-  const closeModelSelect = useAtomSet(closeModelSelectAction);
-  const applyModelFilter = useAtomSet(applyModelFilterAction);
-  const clearModelFilter = useAtomSet(clearModelFilterAction);
-  const openYearSelect = useAtomSet(openYearSelectAction);
-  const closeYearSelect = useAtomSet(closeYearSelectAction);
-  const applyYearFilter = useAtomSet(applyYearFilterAction);
-  const clearYearFilter = useAtomSet(clearYearFilterAction);
+  const applyBrandSelection = () =>
+    Option.match(Option.fromNullishOr(brandItems[selectedIndex]), {
+      onNone: () => undefined,
+      onSome: (selected) => commands.applyBrandFilter(selected.value),
+    });
+  const applyModelSelection = () =>
+    Option.match(Option.fromNullishOr(modelItems[selectedIndex]), {
+      onNone: () => undefined,
+      onSome: (selected) => commands.applyModelFilter(selected.value),
+    });
+  const applyYearSelection = () =>
+    Option.match(Option.fromNullishOr(yearItems[selectedIndex]), {
+      onNone: () => undefined,
+      onSome: (selected) => commands.applyYearFilter(selected.value),
+    });
+  const applyFuelSelection = () =>
+    Option.match(Option.fromNullishOr(fuelItems[selectedIndex]), {
+      onNone: () => undefined,
+      onSome: (selected) => commands.applyFuelFilter(selected.value),
+    });
 
-  const handleSearchInput = (
-    input: string,
-    key: { return?: boolean; escape?: boolean; backspace?: boolean; delete?: boolean; ctrl?: boolean; meta?: boolean },
-  ) => {
-    if (key.return) {
-      commitSearch(undefined);
-      return;
-    }
-    if (key.escape) {
-      cancelSearch(undefined);
-      return;
-    }
-    if (key.backspace || key.delete) {
-      deleteSearchChar(undefined);
-      return;
-    }
-    if (input && !key.ctrl && !key.meta) {
-      appendSearchChar(input);
-    }
+  const clearAllFilters = () => {
+    commands.clearBrandFilter();
+    commands.clearModelFilter();
+    commands.clearYearFilter();
+    commands.clearFuelFilter();
   };
 
-  const keymap: Record<string, () => void> = {
-    'q': exit,
-    'f': () => openModelSelect(undefined),
-    'F': () => openYearSelect(undefined),
-    'x': () => { clearModelFilter(undefined); clearYearFilter(undefined); },
-    '/': () => startSearch(undefined),
-    'c': () => clearSearch(undefined),
-    'o': () => toggleCpo(undefined),
-    'r': () => toggleSortDir(undefined),
-    'n': () => nextPage(undefined),
-    'b': () => prevPage(undefined),
-    'p': () => setSortKey('price'),
-    'm': () => setSortKey('miles'),
-    'y': () => setSortKey('year'),
-    'l': () => setSortKey('listed'),
-  };
-
-  useInput((input, key) =>
-    Match.value({ modelSelectMode, yearSelectMode, searchMode, input, escape: key.escape }).pipe(
-      Match.when({ modelSelectMode: true, escape: true }, () => closeModelSelect(undefined)),
-      Match.when({ modelSelectMode: true }, () => {}),
-      Match.when({ yearSelectMode: true, escape: true }, () => closeYearSelect(undefined)),
-      Match.when({ yearSelectMode: true }, () => {}),
-      Match.when({ searchMode: true }, () => handleSearchInput(input, key)),
-      Match.orElse(() => keymap[input]?.()),
-    ),
+  const handleAppInput = createAppInputHandler(
+    {
+      searchMode,
+      brandSelectMode,
+      modelSelectMode,
+      yearSelectMode,
+      fuelSelectMode,
+    },
+    {
+      exit,
+      clearAllFilters,
+      closeBrandSelect: commands.closeBrandSelect,
+      closeModelSelect: commands.closeModelSelect,
+      closeYearSelect: commands.closeYearSelect,
+      closeFuelSelect: commands.closeFuelSelect,
+      openModelSelect: commands.openModelSelect,
+      openBrandSelect: commands.openBrandSelect,
+      openYearSelect: commands.openYearSelect,
+      openFuelSelect: commands.openFuelSelect,
+      applyBrandSelection,
+      applyModelSelection,
+      applyYearSelection,
+      applyFuelSelection,
+      moveSelectPrevious: commands.moveSelectPrevious,
+      moveSelectNext: commands.moveSelectNext,
+      cycleSort: commands.cycleSort,
+      nextPage: commands.nextPage,
+      prevPage: commands.prevPage,
+      toggleCpo: commands.toggleCpo,
+      clearSearch: commands.clearSearch,
+      startSearch: commands.startSearch,
+      cancelSearch: commands.cancelSearch,
+      commitSearch: commands.commitSearch,
+      appendSearchChar: commands.appendSearchChar,
+      deleteSearchChar: commands.deleteSearchChar,
+    },
   );
+
+  useInput((input, key) => {
+    handleAppInput(input, key);
+  });
 
   return (
     <Box flexDirection="column">
-      {loading && (
-        <Box marginBottom={1}>
-          <Text color="green">
-            <Spinner type="dots" />
-          </Text>
-          <Box width={40}>
-            <Text color="yellow"> {loadingStatus}</Text>
+      {Match.value({ loadFailed, loading }).pipe(
+        Match.when({ loading: true }, () => (
+          <Box marginBottom={1}>
+            <Text color="green">
+              <Spinner type="dots" />
+            </Text>
+            <Box width={40}>
+              <Text color="yellow"> {loadingStatus}</Text>
+            </Box>
+            <Box width={15}>
+              <Text color="cyan">{String(loadedCount).padStart(5)} loaded</Text>
+            </Box>
           </Box>
-          <Box width={15}>
-            <Text color="cyan">{String(loadedCount).padStart(5)} loaded</Text>
+        )),
+        Match.when({ loadFailed: true }, () => (
+          <Box marginBottom={1}>
+            <Text color="red">Load failed: {loadingStatus}</Text>
           </Box>
-        </Box>
+        )),
+        Match.orElse(() => null),
       )}
       <Header
         sortKey={header.sortKey}
         sortDir={header.sortDir}
         search={header.search}
         page={header.page}
+        filteredTotal={header.filteredTotal}
         total={header.total}
         pageSize={header.pageSize}
         cpoOnly={header.cpoOnly}
+        brandFilter={header.brandFilter}
         modelFilter={header.modelFilter}
         yearFilter={view.yearFilter}
+        fuelFilter={header.fuelFilter}
       />
+      {brandSelectMode && (
+        <SelectMenu
+          items={brandItems}
+          label="Select brand (Enter to apply, Esc or [B] to dismiss)"
+          selectedIndex={selectedIndex}
+        />
+      )}
       {modelSelectMode && (
-        <Box marginBottom={1} flexDirection="column">
-          <Text color="yellow">Select model (Enter to apply, Esc to cancel)</Text>
-          <SelectInput
-            items={modelItems}
-            onSelect={(item: { label: string; value: string | null }) => applyModelFilter(item.value)}
-          />
-        </Box>
+        <SelectMenu
+          items={modelItems}
+          label="Select model (Enter to apply, Esc or [f] to dismiss)"
+          selectedIndex={selectedIndex}
+        />
       )}
       {yearSelectMode && (
-        <Box marginBottom={1} flexDirection="column">
-          <Text color="yellow">Select year (Enter to apply, Esc to cancel)</Text>
-          <SelectInput
-            items={yearItems}
-            onSelect={(item: { label: string; value: number | null }) => applyYearFilter(item.value)}
-          />
-        </Box>
+        <SelectMenu
+          items={yearItems}
+          label="Select minimum year (Enter to apply, Esc or [F] to dismiss)"
+          selectedIndex={selectedIndex}
+        />
+      )}
+      {fuelSelectMode && (
+        <SelectMenu
+          items={fuelItems}
+          label="Select fuel (Enter to apply, Esc or [u] to dismiss)"
+          selectedIndex={selectedIndex}
+        />
       )}
       {searchMode && (
         <Box marginBottom={1}>
@@ -340,15 +634,22 @@ export const App: React.FC = () => {
         </Box>
       )}
       <TableHeader />
-      {visible.map((listing, idx) => (
-        <ListingRow key={`${idx}-${listing.vin}`} listing={listing} />
-      ))}
-      {visible.length === 0 && <Text dimColor>No results</Text>}
+      {pipe(
+        visible,
+        Arr.map((listing) => (
+          <ListingRow key={listing.vin} listing={listing} />
+        )),
+      )}
+      {Match.value({ loadFailed, visibleCount: visible.length }).pipe(
+        Match.when({ loadFailed: true }, () => null),
+        Match.when({ visibleCount: 0 }, () => <Text dimColor>No results</Text>),
+        Match.orElse(() => null),
+      )}
     </Box>
   );
 };
 
-export const renderApp = (registry: Registry.Registry): Instance =>
+export const renderApp = (registry: AtomRegistry.AtomRegistry): Instance =>
   render(
     <RegistryContext.Provider value={registry}>
       <App />

@@ -29,6 +29,7 @@
     "stripInternal": true,
     "target": "ESNext",
     "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     "moduleDetection": "force",
     "verbatimModuleSyntax": true,
     "noImplicitOverride": true,
@@ -46,7 +47,42 @@
       "@/backend/*": [
         "../backend/amplify/*"
       ]
-    }
+    },
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "globalDateInEffect": "error",
+          "globalDate": "warning",
+          "globalErrorInEffectCatch": "warning",
+          "globalFetch": "warning",
+          "globalFetchInEffect": "error",
+          "globalRandom": "error",
+          "globalTimers": "error",
+          "importFromBarrel": "warning",
+          "globalConsole": "warning",
+          "globalConsoleInEffect": "error",
+          "catchAllToMapError": "warning",
+          "anyUnknownInErrorContext": "error",
+          "layerMergeAllWithDependencies": "error",
+          "nodeBuiltinImport": "error",
+          "preferSchemaOverJson": "error",
+          "cryptoRandomUUID": "warning",
+          "cryptoRandomUUIDInEffect": "warning",
+          "deterministicKeys": "warning",
+          "effectDoNotation": "warning",
+          "newPromise": "warning",
+          "nestedEffectGenYield": "warning"
+        },
+        "barrelImportPackages": [
+          "effect",
+          "@effect/*"
+        ],
+        "includeSuggestionsInTsc": true,
+        "ignoreEffectWarningsInTscExitCode": true,
+        "ignoreEffectSuggestionsInTscExitCode": true
+      }
+    ]
   },
   "include": [
     "src/**/*.ts",
@@ -55,6 +91,6 @@
     "main.tsx"
   ],
   "exclude": [
-    "check-files.ts"
+    "src/**/*.test.ts"
   ]
 }

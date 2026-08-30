@@ -86,20 +86,6 @@
         }
       ]
     },
-    "eslint": {
-      "name": "eslint",
-      "description": "Runs eslint against the codebase",
-      "env": {
-        "ESLINT_USE_FLAT_CONFIG": "false",
-        "NODE_NO_WARNINGS": "1"
-      },
-      "steps": [
-        {
-          "exec": "eslint --ext .ts,.tsx --fix --no-error-on-unmatched-pattern $@ src test build-tools projenrc .projenrc.ts",
-          "receiveArgs": true
-        }
-      ]
-    },
     "install": {
       "name": "install",
       "description": "Install project dependencies and update lockfile (non-frozen)",
@@ -139,20 +125,7 @@
       "description": "Run tests",
       "steps": [
         {
-          "exec": "jest --passWithNoTests --updateSnapshot",
-          "receiveArgs": true
-        },
-        {
-          "spawn": "eslint"
-        }
-      ]
-    },
-    "test:watch": {
-      "name": "test:watch",
-      "description": "Run jest in watch mode",
-      "steps": [
-        {
-          "exec": "jest --watch"
+          "exec": "vitest run"
         }
       ]
     },
@@ -164,13 +137,13 @@
       },
       "steps": [
         {
-          "exec": "yarn dlx npm-check-updates@18 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,eslint-import-resolver-typescript,eslint-plugin-import,jest,projen,ts-jest,ts-node,typescript"
+          "exec": "yarn dlx npm-check-updates@18 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/node,projen,ts-node,typescript"
         },
         {
           "exec": "yarn install"
         },
         {
-          "exec": "yarn up @stylistic/eslint-plugin @types/jest @types/node @types/react @typescript-eslint/eslint-plugin @typescript-eslint/parser constructs eslint-import-resolver-typescript eslint-plugin-import eslint jest jest-junit projen ts-jest ts-node typescript @effect-atom/atom-react @effect-atom/atom @effect/cli @effect/cluster @effect/experimental @effect/language-service @effect/platform-node @effect/platform @effect/printer-ansi @effect/printer @effect/rpc @effect/sql @effect/typeclass @effect/workflow cli-table3 date-fns effect ink-select-input ink react"
+          "exec": "yarn up @biomejs/biome @catenarycloud/linteffect @effect/language-service @effect/tsgo @types/node @types/react @typescript/native-preview constructs projen ts-node tsx typescript vitest @effect/atom-react @effect/platform-node date-fns effect ink-spinner ink react scheduler"
         },
         {
           "exec": "npx projen"

@@ -1,0 +1,45 @@
+{
+  "root": true,
+  "extends": [
+    "@catenarycloud/linteffect"
+  ],
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "recommended": false
+    }
+  },
+  "files": {
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      ".projenrc.ts"
+    ],
+    "ignoreUnknown": false
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "useConst": "error"
+      }
+    }
+  },
+  "vcs": {
+    "clientKind": "git",
+    "enabled": true,
+    "useIgnoreFile": true
+  },
+  "$schema": "node_modules/@biomejs/biome/configuration_schema.json"
+}

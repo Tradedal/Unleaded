@@ -1,67 +1,57 @@
-# Unleaded cli
+# Unleaded
 
-This is an interactive cli to search car listings.
+Unleaded is the fastest, human-optimized way to search used-car listings from
+the terminal. It puts live inventory in a keyboard-driven table where you can
+filter, sort, compare, and open listing links without leaving the CLI.
+
+There are no agents, MCPs, harnesses, or wrappers. Unleaded is a straight, fast
+live CLI built for people who want to search cars, not operate a toolchain.
+
+![Unleaded terminal UI](./media/unleaded.gif)
+
+## Install
 
 ```bash
-AUTO_DEV_API_KEY=xxx npx tsx main.tsx -z <zip> [-b <brand>] [-m <model>] [-d <distance>] [-e <engine>]
+npm install --global @tradedal/unleaded
 ```
 
-Options:
+## Run a search
 
-- `-z, --zip` - Zip code for search location (required)
-- `-b, --brand` - Brand/make name (e.g., Hyundai, Tesla)
-- `-m, --model` - Model name (e.g., Ioniq 5, Model 3)
-- `-d, --distance` - Search radius in miles (default: 50)
-- `-e, --engine` - Engine type (default: electric)
+Set an [auto.dev](https://www.auto.dev/) or
+[MarketCheck](https://www.marketcheck.com/) API key, then run `unleaded`:
 
-Use `--wizard` for interactive mode or `--help` for full usage info.
+```bash
+export AUTO_DEV_API_KEY=your-key
+unleaded -z 90089 -d 100 -e Electric -b Hyundai -m Ioniq
+```
 
-# Requirements
+Use `--state CA` without a ZIP for a state-wide search. Run `unleaded --help`
+for every search option.
 
-Using `api.auto.dev` API, register an account and get API key to use with this cli.
+## Terminal controls
 
-auto.dev provides enough free searches per month to find a good deal.
+The control bar shows every shortcut. Sort and filter with one key, page through
+results, and press `q` to quit. Listings link directly to the vehicle page,
+image, history report, and VIN search when those links are available.
 
-To start, run `yarn install`
+![Controls](./media/controls.png)
 
-# How to use
+Block dealers you do not want to see again:
 
-Unleaded cli provides market snapshot.
+```bash
+unleaded block add "Example Motors"
+unleaded block list
+unleaded block remove "Example Motors"
+unleaded block clear
+```
 
-![](./media/controls.png)
+## Development
 
-It loads vehicle listings for a car maker, zip and desired distance. Use fast cli to sort and filter listing to find cars in the desired price range and location.
+```bash
+yarn install
+yarn compile
+yarn test
+```
 
-If something looks good, click on carfax link to check the history. There is also a link to Google search for Vin number. Google usually points to the dealership listing on first result or second result.
-
-Call sales and negotiate :)
-
-# Build
-
-To make it start faster:
-
-`npx projen build`
-
-`AUTO_DEV_API_KEY=hey node lib/src/main.js`
-
-# Features
-
-Caches all content in ./cache dir to re-use data.
-
-Interactive, instant sorting by various parameters (price, cpo flag etc). Basic search to find dealer names.
-
-Filter by model name, and CPO (manufacturer certified pre-owned) state.
-
-Clicable links to the car image, carfax report and vin search through Google
-
-Normalizes model names
-
-![link](./media/unleaded.gif)
-
-# Tech stack
-
-Created with [Effect](http://effect.website) for declarative coding, [ink](https://github.com/vadimdemedes/ink) for terminal UI, [Effect Atom](https://github.com/tim-smart/effect-atom/blob/main/README.md) for the state, [Projen](https://github.com/projen/projen) for the project and deps management, and the usual AI involment.
-
-# Contributions
-
-Hack away on it with your fav agent :)
+Built with TypeScript, Effect, Effect Atom, and Ink. Licensed under
+[Apache 2.0](./LICENSE).
