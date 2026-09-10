@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4-dev.1](https://github.com/Tradedal/Unleaded/compare/v0.1.4-dev...v0.1.4-dev.1) (2026-09-10)
+
+
+### Features
+
+* add selector typeahead ([8297e67](https://github.com/Tradedal/Unleaded/commit/8297e67c5682338d0b6b5cddf1718268cdd656b1))
+* add selector typeahead ([36859d7](https://github.com/Tradedal/Unleaded/commit/36859d761e277b2f278babc943f293c38c15f5f6))
+
 ## [0.1.4-dev](https://github.com/Tradedal/Unleaded/compare/v0.1.3...v0.1.4-dev) (2026-09-10)
 
 
