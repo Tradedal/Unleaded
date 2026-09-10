@@ -218,7 +218,7 @@
           "exec": "yarn install"
         },
         {
-          "exec": "yarn up @biomejs/biome @catenarycloud/linteffect @effect/language-service @effect/tsgo @types/node @types/react @typescript/native-preview commit-and-tag-version constructs projen ts-node tsx typescript vitest @effect/atom-react @effect/platform-node date-fns effect ink-spinner ink react scheduler"
+          "exec": "yarn up @biomejs/biome @catenarycloud/linteffect @effect/language-service @effect/tsgo @types/node @types/react @typescript/native-preview commit-and-tag-version constructs projen ts-node tsx typescript vitest @effect/atom-react @effect/platform-node-shared @effect/platform-node date-fns effect ink-spinner ink react scheduler"
         },
         {
           "exec": "npx projen"

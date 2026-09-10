@@ -255,6 +255,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/platform-node-shared@npm:4.0.0-beta.100":
+  version: 4.0.0-beta.100
+  resolution: "@effect/platform-node-shared@npm:4.0.0-beta.100"
+  dependencies:
+    "@types/ws": "npm:^8.18.1"
+    ws: "npm:^8.21.0"
+  peerDependencies:
+    effect: ^4.0.0-beta.100
+  checksum: 10c0/4babbcfd445fb9d9453918e2f79ef46458ba01ebe90af67e62451440792f703bf4ffba19a0e5d9ccbd2acb1fffbb50f140b69dd629ba39e1fa72b5fc0b6e99a1
+  languageName: node
+  linkType: hard
+
 "@effect/platform-node-shared@npm:^4.0.0-beta.100":
   version: 4.0.0-rc.112
   resolution: "@effect/platform-node-shared@npm:4.0.0-rc.112"
@@ -940,6 +952,7 @@ __metadata:
     "@effect/atom-react": "npm:4.0.0-beta.100"
     "@effect/language-service": "npm:^0.86.2"
     "@effect/platform-node": "npm:4.0.0-beta.100"
+    "@effect/platform-node-shared": "npm:4.0.0-beta.100"
     "@effect/tsgo": "npm:0.14.0"
     "@types/node": "npm:^25.0.3"
     "@types/react": "npm:^19.0.0"
@@ -5041,7 +5054,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.21.3":
+"ws@npm:^8.21.0, ws@npm:^8.21.3":
   version: 8.21.3
   resolution: "ws@npm:8.21.3"
   peerDependencies:
