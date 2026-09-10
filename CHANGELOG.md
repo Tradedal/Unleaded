@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.4-dev](https://github.com/Tradedal/Unleaded/compare/v0.1.3...v0.1.4-dev) (2026-09-10)
+
+
+### Bug Fixes
+
+* keep filter menus within terminal height ([1c59cec](https://github.com/Tradedal/Unleaded/commit/1c59cec2276e0799f85cf5ba54a99dbe99781144))
+* use Ink alternate screen rendering ([ee16675](https://github.com/Tradedal/Unleaded/commit/ee16675f3e0097f984a3dfc6648f58fe6f1e1041))
+* use Ink alternate screen rendering ([561a47c](https://github.com/Tradedal/Unleaded/commit/561a47cae9aad7d1dbbdc584bcf4eb86e9d72392))
+
 ## [0.1.3](https://github.com/Tradedal/Unleaded/compare/v0.1.2...v0.1.3) (2026-09-10)
 
 
