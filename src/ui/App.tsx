@@ -1,8 +1,8 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry";
 import { formatDistanceToNowStrict } from "date-fns";
-import { Array as Arr, Match, Option, pipe } from "effect";
-import { Box, type Instance, render, Text, useApp, useInput } from "ink";
+import { Array as Arr, Effect, Match, Option, pipe } from "effect";
+import { Box, render, Text, useApp, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type React from "react";
 import type { SortDir, SortKey } from "../domain/sorting.js";
@@ -17,6 +17,7 @@ import {
   loadingAtom,
   loadingStatusAtom,
   modelItemsAtom,
+  terminalRowsAtom,
   viewStateAtom,
   visibleAtom,
   yearItemsAtom,
@@ -473,6 +474,7 @@ const TableHeader: React.FC = () => (
 
 export const App: React.FC = () => {
   const { exit } = useApp();
+  const terminalRows = useAtomValue(terminalRowsAtom);
   const header = useAtomValue(headerAtom);
   const visible = useAtomValue(visibleAtom);
   const modelItems = useAtomValue(modelItemsAtom);
@@ -564,7 +566,12 @@ export const App: React.FC = () => {
   });
 
   return (
-    <Box flexDirection="column">
+    <Box
+      flexDirection="column"
+      height={terminalRows}
+      overflow="hidden"
+      width="100%"
+    >
       {Match.value({ loadFailed, loading }).pipe(
         Match.when({ loading: true }, () => (
           <Box marginBottom={1}>
@@ -649,10 +656,22 @@ export const App: React.FC = () => {
   );
 };
 
-export const renderApp = (registry: AtomRegistry.AtomRegistry): Instance =>
-  render(
-    <RegistryContext.Provider value={registry}>
-      <App />
-    </RegistryContext.Provider>,
-    { exitOnCtrlC: true },
+export const renderApp = (registry: AtomRegistry.AtomRegistry) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() =>
+      process.stdout.write("\u001b[?1049h\u001b[2J\u001b[H"),
+    ).pipe(
+      Effect.andThen(
+        Effect.sync(() =>
+          render(
+            <RegistryContext.Provider value={registry}>
+              <App />
+            </RegistryContext.Provider>,
+            { exitOnCtrlC: true },
+          ),
+        ),
+      ),
+    ),
+    (app) => Effect.promise(() => app.waitUntilExit()),
+    () => Effect.sync(() => process.stdout.write("\u001b[?1049l")),
   );

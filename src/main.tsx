@@ -140,8 +140,7 @@ const runSearch = ({
         yearRange: validatedYearRange,
       }),
     );
-    const app = renderApp(registry);
-    yield* Effect.promise(() => app.waitUntilExit());
+    yield* renderApp(registry);
   });
 
 const blockedDealersArg = Args.string("dealer").pipe(Args.variadic());

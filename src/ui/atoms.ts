@@ -22,6 +22,14 @@ import type { ListingsSnapshot } from "../services/ListingsService.js";
 
 const runtime = Atom.runtime(Layer.empty);
 
+export const terminalRowsAtom = Atom.readable((get) => {
+  const update = () => get.setSelf(process.stdout.rows ?? 24);
+  process.stdout.on("resize", update);
+  get.addFinalizer(() => process.stdout.off("resize", update));
+  const terminalRows: number = process.stdout.rows ?? 24;
+  return terminalRows;
+});
+
 export type ViewState = {
   search: string;
   searchInput: string;
