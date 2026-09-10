@@ -1,7 +1,8 @@
-import { Match, Option } from "effect";
+import { Match, Option, String as Str } from "effect";
 import { useAtomSet } from "@effect/atom-react";
 import type { SortKey } from "../domain/sorting.js";
 import {
+  appendSelectCharAction,
   appendSearchCharAction,
   applyBrandFilterAction,
   applyFuelFilterAction,
@@ -28,6 +29,7 @@ import {
   openYearSelectAction,
   prevPageAction,
   cycleSortAction,
+  deleteSelectCharAction,
   startSearchAction,
   toggleCpoAction,
 } from "./atoms.js";
@@ -82,10 +84,13 @@ type AppCommands = {
   cancelSearch: () => void;
   commitSearch: () => void;
   appendSearchChar: (char: string) => void;
+  appendSelectChar: (char: string) => void;
+  deleteSelectChar: () => void;
   deleteSearchChar: () => void;
 };
 
 export type AppAtomCommands = {
+  appendSelectChar: (char: string) => void;
   appendSearchChar: (char: string) => void;
   clearSearch: () => void;
   closeBrandSelect: () => void;
@@ -93,6 +98,7 @@ export type AppAtomCommands = {
   closeYearSelect: () => void;
   closeFuelSelect: () => void;
   commitSearch: () => void;
+  deleteSelectChar: () => void;
   deleteSearchChar: () => void;
   applyBrandFilter: (value: string | null) => void;
   applyFuelFilter: (value: string | null) => void;
@@ -117,6 +123,7 @@ export type AppAtomCommands = {
 };
 
 export const useAppAtomCommands = (): AppAtomCommands => {
+  const appendSelectChar = useAtomSet(appendSelectCharAction);
   const cycleSort = useAtomSet(cycleSortAction);
   const nextPage = useAtomSet(nextPageAction);
   const prevPage = useAtomSet(prevPageAction);
@@ -127,6 +134,7 @@ export const useAppAtomCommands = (): AppAtomCommands => {
   const startSearch = useAtomSet(startSearchAction);
   const cancelSearch = useAtomSet(cancelSearchAction);
   const commitSearch = useAtomSet(commitSearchAction);
+  const deleteSelectChar = useAtomSet(deleteSelectCharAction);
   const appendSearchChar = useAtomSet(appendSearchCharAction);
   const deleteSearchChar = useAtomSet(deleteSearchCharAction);
   const openModelSelect = useAtomSet(openModelSelectAction);
@@ -147,6 +155,7 @@ export const useAppAtomCommands = (): AppAtomCommands => {
   const applyFuelFilter = useAtomSet(applyFuelFilterAction);
 
   return {
+    appendSelectChar: (char) => appendSelectChar(char),
     appendSearchChar: (char) => appendSearchChar(char),
     clearSearch: () => clearSearch(undefined),
     startSearch: () => startSearch(undefined),
@@ -156,6 +165,7 @@ export const useAppAtomCommands = (): AppAtomCommands => {
     closeYearSelect: () => closeYearSelect(undefined),
     closeFuelSelect: () => closeFuelSelect(undefined),
     commitSearch: () => commitSearch(undefined),
+    deleteSelectChar: () => deleteSelectChar(undefined),
     deleteSearchChar: () => deleteSearchChar(undefined),
     nextPage: () => nextPage(undefined),
     moveSelectPrevious: () => moveSelectPrevious(undefined),
@@ -262,18 +272,27 @@ const handleSelectMode = (
     escape: key.escape,
     up: key.upArrow,
     down: key.downArrow,
+    backspace: key.backspace,
+    delete: key.delete,
   }).pipe(
     Match.when({ escape: true }, closeSelection),
     Match.when({ return: true }, () => {
       applySelection();
     }),
-    Match.whenOr({ up: true }, { input: "k" }, commands.moveSelectPrevious),
-    Match.whenOr({ down: true }, { input: "j" }, commands.moveSelectNext),
+    Match.whenOr({ backspace: true }, { delete: true }, () => {
+      commands.deleteSelectChar();
+    }),
+    Match.when({ up: true }, commands.moveSelectPrevious),
+    Match.when({ down: true }, commands.moveSelectNext),
     Match.when(
       { input: Match.is(selectToggleKeys[selectMode]) },
       closeSelection,
     ),
-    Match.orElse(() => {}),
+    Match.when(
+      () => Str.isNonEmpty(input) && !isCharInputBlocked(key),
+      () => commands.appendSelectChar(input),
+    ),
+    Match.orElse(() => undefined),
   );
 };
 
