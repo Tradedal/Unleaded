@@ -1,8 +1,8 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry";
 import { formatDistanceToNowStrict } from "date-fns";
-import { Array as Arr, Match, Option, pipe } from "effect";
-import { Box, type Instance, render, Text, useApp, useInput } from "ink";
+import { Array as Arr, Effect, Match, Option, pipe } from "effect";
+import { Box, render, Text, useApp, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type React from "react";
 import type { SortDir, SortKey } from "../domain/sorting.js";
@@ -17,7 +17,7 @@ import {
   loadingAtom,
   loadingStatusAtom,
   modelItemsAtom,
-  terminalPageSize,
+  terminalRowsAtom,
   viewStateAtom,
   visibleAtom,
   yearItemsAtom,
@@ -78,14 +78,10 @@ const SelectMenu = <T extends string | number | null>({
       </Box>
     )),
     Match.orElse(() => {
-      const menuLimit = Math.max(
-        1,
-        Math.min(MENU_LIMIT, terminalPageSize),
-      );
-      const maxStart = Math.max(0, items.length - menuLimit);
+      const maxStart = Math.max(0, items.length - MENU_LIMIT);
       const windowStart = Math.max(
         0,
-        Math.min(selectedIndex - Math.floor(menuLimit / 2), maxStart),
+        Math.min(selectedIndex - Math.floor(MENU_LIMIT / 2), maxStart),
       );
       return (
         <Box marginBottom={1} flexDirection="column">
@@ -93,7 +89,7 @@ const SelectMenu = <T extends string | number | null>({
           {pipe(
             items,
             Arr.drop(windowStart),
-            Arr.take(menuLimit),
+            Arr.take(MENU_LIMIT),
             Arr.map((item, index) => (
               <Text
                 key={item.label}
@@ -478,6 +474,7 @@ const TableHeader: React.FC = () => (
 
 export const App: React.FC = () => {
   const { exit } = useApp();
+  const terminalRows = useAtomValue(terminalRowsAtom);
   const header = useAtomValue(headerAtom);
   const visible = useAtomValue(visibleAtom);
   const modelItems = useAtomValue(modelItemsAtom);
@@ -490,12 +487,6 @@ export const App: React.FC = () => {
   const modelSelectMode = view.modelSelectMode;
   const yearSelectMode = view.yearSelectMode;
   const fuelSelectMode = view.fuelSelectMode;
-  const hasOverlay =
-    brandSelectMode ||
-    modelSelectMode ||
-    yearSelectMode ||
-    fuelSelectMode ||
-    searchMode;
   const loading = useAtomValue(loadingAtom);
   const loadFailed = useAtomValue(loadFailedAtom);
   const loadedCount = useAtomValue(loadedCountAtom);
@@ -575,7 +566,12 @@ export const App: React.FC = () => {
   });
 
   return (
-    <Box flexDirection="column">
+    <Box
+      flexDirection="column"
+      height={terminalRows}
+      overflow="hidden"
+      width="100%"
+    >
       {Match.value({ loadFailed, loading }).pipe(
         Match.when({ loading: true }, () => (
           <Box marginBottom={1}>
@@ -644,32 +640,38 @@ export const App: React.FC = () => {
           <Text color="yellow">Search: {searchInput}█</Text>
         </Box>
       )}
-      {!hasOverlay && (
-        <>
-          <TableHeader />
-          {pipe(
-            visible,
-            Arr.map((listing) => (
-              <ListingRow key={listing.vin} listing={listing} />
-            )),
-          )}
-          {Match.value({ loadFailed, visibleCount: visible.length }).pipe(
-            Match.when({ loadFailed: true }, () => null),
-            Match.when({ visibleCount: 0 }, () => (
-              <Text dimColor>No results</Text>
-            )),
-            Match.orElse(() => null),
-          )}
-        </>
+      <TableHeader />
+      {pipe(
+        visible,
+        Arr.map((listing) => (
+          <ListingRow key={listing.vin} listing={listing} />
+        )),
+      )}
+      {Match.value({ loadFailed, visibleCount: visible.length }).pipe(
+        Match.when({ loadFailed: true }, () => null),
+        Match.when({ visibleCount: 0 }, () => <Text dimColor>No results</Text>),
+        Match.orElse(() => null),
       )}
     </Box>
   );
 };
 
-export const renderApp = (registry: AtomRegistry.AtomRegistry): Instance =>
-  render(
-    <RegistryContext.Provider value={registry}>
-      <App />
-    </RegistryContext.Provider>,
-    { exitOnCtrlC: true },
+export const renderApp = (registry: AtomRegistry.AtomRegistry) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() =>
+      process.stdout.write("\u001b[?1049h\u001b[2J\u001b[H"),
+    ).pipe(
+      Effect.andThen(
+        Effect.sync(() =>
+          render(
+            <RegistryContext.Provider value={registry}>
+              <App />
+            </RegistryContext.Provider>,
+            { exitOnCtrlC: true },
+          ),
+        ),
+      ),
+    ),
+    (app) => Effect.promise(() => app.waitUntilExit()),
+    () => Effect.sync(() => process.stdout.write("\u001b[?1049l")),
   );

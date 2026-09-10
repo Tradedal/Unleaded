@@ -21,7 +21,14 @@ import type { AutoDevListing } from "../schema.js";
 import type { ListingsSnapshot } from "../services/ListingsService.js";
 
 const runtime = Atom.runtime(Layer.empty);
-export const terminalPageSize = Math.max(1, (process.stdout.rows ?? 24) - 8);
+
+export const terminalRowsAtom = Atom.readable((get) => {
+  const update = () => get.setSelf(process.stdout.rows ?? 24);
+  process.stdout.on("resize", update);
+  get.addFinalizer(() => process.stdout.off("resize", update));
+  const terminalRows: number = process.stdout.rows ?? 24;
+  return terminalRows;
+});
 
 export type ViewState = {
   search: string;
@@ -50,7 +57,7 @@ export const initialViewState: ViewState = {
   sortKey: null,
   sortDir: "asc",
   page: 0,
-  pageSize: terminalPageSize,
+  pageSize: 15,
   cpoOnly: false,
   brandFilter: null,
   brandSelectMode: false,
