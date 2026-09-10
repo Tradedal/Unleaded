@@ -24,6 +24,25 @@
         }
       ]
     },
+    "bump": {
+      "name": "bump",
+      "description": "Bumps version based on latest git tag and generates a changelog entry",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^12",
+        "RELEASABLE_COMMITS": "git log --no-merges --oneline $LATEST_TAG..HEAD -E --grep \"^(feat|fix){1}(\\([^()[:space:]]+\\))?(!)?:[[:blank:]]+.+\""
+      },
+      "steps": [
+        {
+          "builtin": "release/bump-version"
+        }
+      ],
+      "condition": "git log --oneline -1 | grep -qv \"chore(release):\""
+    },
     "clobber": {
       "name": "clobber",
       "description": "hard resets to HEAD of origin and cleans the local repo",
@@ -106,11 +125,24 @@
     },
     "package": {
       "name": "package",
-      "description": "Creates the distribution package"
+      "description": "Creates the distribution package",
+      "steps": [
+        {
+          "exec": "mkdir -p dist/js"
+        },
+        {
+          "exec": "npm pack --pack-destination dist/js"
+        }
+      ]
     },
     "post-compile": {
       "name": "post-compile",
-      "description": "Runs after successful compilation"
+      "description": "Runs after successful compilation",
+      "steps": [
+        {
+          "exec": "chmod +x lib/src/main.js"
+        }
+      ]
     },
     "post-upgrade": {
       "name": "post-upgrade",
@@ -120,12 +152,55 @@
       "name": "pre-compile",
       "description": "Prepare the project for compilation"
     },
+    "release": {
+      "name": "release",
+      "description": "Prepare a release from \"master\" branch",
+      "env": {
+        "RELEASE": "true",
+        "MAJOR": "0"
+      },
+      "steps": [
+        {
+          "exec": "rm -fr dist"
+        },
+        {
+          "spawn": "bump"
+        },
+        {
+          "spawn": "build"
+        },
+        {
+          "spawn": "unbump"
+        },
+        {
+          "exec": "git diff --ignore-space-at-eol --exit-code"
+        }
+      ]
+    },
     "test": {
       "name": "test",
       "description": "Run tests",
       "steps": [
         {
           "exec": "vitest run"
+        }
+      ]
+    },
+    "unbump": {
+      "name": "unbump",
+      "description": "Restores version to 0.0.0",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^12",
+        "RELEASABLE_COMMITS": "git log --no-merges --oneline $LATEST_TAG..HEAD -E --grep \"^(feat|fix){1}(\\([^()[:space:]]+\\))?(!)?:[[:blank:]]+.+\""
+      },
+      "steps": [
+        {
+          "builtin": "release/reset-version"
         }
       ]
     },
@@ -143,7 +218,7 @@
           "exec": "yarn install"
         },
         {
-          "exec": "yarn up @biomejs/biome @catenarycloud/linteffect @effect/language-service @effect/tsgo @types/node @types/react @typescript/native-preview constructs projen ts-node tsx typescript vitest @effect/atom-react @effect/platform-node date-fns effect ink-spinner ink react scheduler"
+          "exec": "yarn up @biomejs/biome @catenarycloud/linteffect @effect/language-service @effect/tsgo @types/node @types/react @typescript/native-preview commit-and-tag-version constructs projen ts-node tsx typescript vitest @effect/atom-react @effect/platform-node date-fns effect ink-spinner ink react scheduler"
         },
         {
           "exec": "npx projen"
