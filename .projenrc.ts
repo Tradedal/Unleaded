@@ -1,4 +1,13 @@
-import { javascript, JsonFile, JsonPatch, TextFile, typescript } from "projen";
+import fs from "node:fs";
+import {
+  javascript,
+  JsonFile,
+  JsonPatch,
+  ReleasableCommits,
+  TextFile,
+  typescript,
+} from "projen";
+import { ReleaseTrigger } from "projen/lib/release/index.js";
 import {
   TypeScriptJsxMode,
   TypeScriptModuleDetection,
@@ -11,6 +20,11 @@ const effectTsgoPackage = "@effect/tsgo@0.14.0";
 const effectLanguageServicePackage = "@effect/language-service@^0.86.2";
 const nativePreviewPackage = "@typescript/native-preview@7.0.0-dev.20250906.1";
 const lintEffectPackage = "@catenarycloud/linteffect@0.0.7-dev.2";
+const yarnVersion = "4.10.3";
+const packageManifestPath = "package.json";
+const currentPackageVersion = fs.existsSync(packageManifestPath)
+  ? JSON.parse(fs.readFileSync(packageManifestPath, "utf8")).version ?? "0.0.0"
+  : "0.0.0";
 
 const effectLanguageServicePlugin = {
   name: "@effect/language-service",
@@ -54,10 +68,15 @@ const project = new typescript.TypeScriptAppProject({
   github: true,
   eslint: false,
   jest: false,
-  release: false,
+  majorVersion: 0,
   npmAccess: javascript.NpmAccess.PUBLIC,
+  npmDistTag: "latest",
+  release: true,
+  releaseToNpm: true,
+  releaseTrigger: ReleaseTrigger.workflowDispatch(),
+  releasableCommits: ReleasableCommits.featuresAndFixes(),
   repository: "https://github.com/Tradedal/Unleaded.git",
-  bin: { unleaded: "./lib/src/main.js" },
+  workflowNodeVersion: "24.11.1",
   npmignore: [
     "/.claude/",
     "/.yarn/",
@@ -73,7 +92,7 @@ const project = new typescript.TypeScriptAppProject({
     "/lib/**/*.test.js",
   ],
   yarnBerryOptions: {
-    version: "4.10.3",
+    version: yarnVersion,
     zeroInstalls: false,
     yarnRcOptions: {
       checksumBehavior: YarnChecksumBehavior.UPDATE,
@@ -141,8 +160,13 @@ const project = new typescript.TypeScriptAppProject({
   ],
 });
 
+project.release?.publisher?.publishToNpm({
+  trustedPublishing: true,
+});
+
 project.setScript("prepare", "effect-tsgo patch");
 project.setScript("postinstall", "effect-tsgo patch");
+project.postCompileTask.exec("chmod +x lib/src/main.js");
 
 const generatedTsConfig = project.tryFindObjectFile("tsconfig.json");
 if (generatedTsConfig) {
@@ -170,7 +194,8 @@ new TextFile(project, ".vscode/settings.json", {
 });
 
 project.package.addField("type", "module");
-project.package.addField("version", "0.1.0");
+project.package.addField("bin", "./lib/src/main.js");
+project.package.addVersion(currentPackageVersion);
 project.package.addField("keywords", ["cars", "cli", "listings", "terminal"]);
 project.npmignore?.addPatterns("/lib/**/*.test.js");
 project.package.addField("homepage", "https://github.com/Tradedal/Unleaded#readme");
@@ -242,81 +267,6 @@ new TextFile(project, "vitest.config.ts", {
   ],
 });
 
-new JsonFile(project, "release-please-config.json", {
-  marker: false,
-  obj: {
-    $schema:
-      "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-    packages: {
-      ".": {
-        "bump-patch-for-minor-pre-major": true,
-        "changelog-path": "CHANGELOG.md",
-        "include-component-in-tag": false,
-        "package-name": "@tradedal/unleaded",
-        "release-type": "node",
-      },
-    },
-  },
-});
-
-new JsonFile(project, ".release-please-manifest.json", {
-  marker: false,
-  obj: { ".": "0.1.0" },
-});
-
-new TextFile(project, ".github/workflows/release.yml", {
-  lines: [
-    "name: release",
-    "",
-    "on:",
-    "  push:",
-    "    branches: [master]",
-    "  workflow_dispatch:",
-    "",
-    "permissions:",
-    "  contents: read",
-    "",
-    "jobs:",
-    "  release-please:",
-    "    if: github.ref_name == 'master'",
-    "    runs-on: ubuntu-latest",
-    "    permissions:",
-    "      contents: write",
-    "      pull-requests: write",
-    "    outputs:",
-    "      release_created: ${{ steps.release.outputs.release_created }}",
-    "    steps:",
-    "      - id: release",
-    "        uses: googleapis/release-please-action@v5",
-    "        with:",
-    "          config-file: release-please-config.json",
-    "          manifest-file: .release-please-manifest.json",
-    "",
-    "  publish-npm:",
-    "    needs: release-please",
-    "    if: needs.release-please.outputs.release_created == 'true'",
-    "    runs-on: ubuntu-latest",
-    "    permissions:",
-    "      contents: read",
-    "      id-token: write",
-    "    steps:",
-    "      - uses: actions/checkout@v5",
-    "      - uses: actions/setup-node@v5",
-    "        with:",
-    "          node-version: 24.11.1",
-    "          registry-url: https://registry.npmjs.org",
-    "          package-manager-cache: false",
-    "      - run: corepack enable",
-    "      - run: yarn install --immutable",
-    "      - run: yarn compile",
-    "      - run: yarn test",
-    "      - run: npm pack --dry-run",
-    "      - run: npm publish --access public",
-    "        env:",
-    "          NPM_CONFIG_PROVENANCE: 'true'",
-  ],
-});
-
 const buildWorkflow = project.github?.workflows.find(
   (workflow) => workflow.name === "build",
 );
@@ -342,3 +292,66 @@ if (buildWorkflow && buildJob) {
   buildWorkflow.file?.patch(JsonPatch.remove("/jobs/build/outputs"));
 }
 project.synth();
+
+const releaseWorkflowPath = ".github/workflows/release.yml";
+const releasePleaseWorkflow = `# ~~ Generated by projen. To modify, edit .projenrc.ts and run "npx projen".
+
+name: release
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch: {}
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+jobs:
+  release_please:
+    if: github.ref_name == 'master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: \${{ steps.release.outputs.release_created }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+  publish_npm:
+    needs: release_please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CI: "true"
+    if: \${{ needs.release_please.outputs.release_created == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install Specific Yarn Version
+        run: corepack enable && corepack prepare yarn@${yarnVersion} --activate
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.11.1
+          package-manager-cache: false
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Compile
+        run: yarn compile
+      - name: Test
+        run: yarn test
+      - name: Verify package
+        run: npm pack --dry-run
+      - name: Publish
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+        run: npm publish --access public
+`;
+
+fs.chmodSync(releaseWorkflowPath, 0o644);
+fs.writeFileSync(releaseWorkflowPath, releasePleaseWorkflow);
+fs.chmodSync(releaseWorkflowPath, 0o444);
