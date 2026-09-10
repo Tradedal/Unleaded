@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/Tradedal/Unleaded/compare/v0.1.2...v0.1.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* make installed CLI runnable ([75a1e6b](https://github.com/Tradedal/Unleaded/commit/75a1e6ba4834a02041add71e4a6f975cf206e224))
+
 ## [0.1.2](https://github.com/Tradedal/Unleaded/compare/v0.1.1...v0.1.2) (2026-09-10)
 
 
