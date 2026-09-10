@@ -17,7 +17,6 @@ import {
   loadingAtom,
   loadingStatusAtom,
   modelItemsAtom,
-  terminalRowsAtom,
   viewStateAtom,
   visibleAtom,
   yearItemsAtom,
@@ -474,7 +473,6 @@ const TableHeader: React.FC = () => (
 
 export const App: React.FC = () => {
   const { exit } = useApp();
-  const terminalRows = useAtomValue(terminalRowsAtom);
   const header = useAtomValue(headerAtom);
   const visible = useAtomValue(visibleAtom);
   const modelItems = useAtomValue(modelItemsAtom);
@@ -556,7 +554,9 @@ export const App: React.FC = () => {
       startSearch: commands.startSearch,
       cancelSearch: commands.cancelSearch,
       commitSearch: commands.commitSearch,
+      appendSelectChar: commands.appendSelectChar,
       appendSearchChar: commands.appendSearchChar,
+      deleteSelectChar: commands.deleteSelectChar,
       deleteSearchChar: commands.deleteSearchChar,
     },
   );
@@ -566,12 +566,7 @@ export const App: React.FC = () => {
   });
 
   return (
-    <Box
-      flexDirection="column"
-      height={terminalRows}
-      overflow="hidden"
-      width="100%"
-    >
+    <Box flexDirection="column">
       {Match.value({ loadFailed, loading }).pipe(
         Match.when({ loading: true }, () => (
           <Box marginBottom={1}>
@@ -610,28 +605,28 @@ export const App: React.FC = () => {
       {brandSelectMode && (
         <SelectMenu
           items={brandItems}
-          label="Select brand (Enter to apply, Esc or [B] to dismiss)"
+          label={`Select brand: ${view.selectInput}█  (Enter to apply, Esc or [B] to dismiss)`}
           selectedIndex={selectedIndex}
         />
       )}
       {modelSelectMode && (
         <SelectMenu
           items={modelItems}
-          label="Select model (Enter to apply, Esc or [f] to dismiss)"
+          label={`Select model: ${view.selectInput}█  (Enter to apply, Esc or [f] to dismiss)`}
           selectedIndex={selectedIndex}
         />
       )}
       {yearSelectMode && (
         <SelectMenu
           items={yearItems}
-          label="Select minimum year (Enter to apply, Esc or [F] to dismiss)"
+          label={`Select minimum year: ${view.selectInput}█  (Enter to apply, Esc or [F] to dismiss)`}
           selectedIndex={selectedIndex}
         />
       )}
       {fuelSelectMode && (
         <SelectMenu
           items={fuelItems}
-          label="Select fuel (Enter to apply, Esc or [u] to dismiss)"
+          label={`Select fuel: ${view.selectInput}█  (Enter to apply, Esc or [u] to dismiss)`}
           selectedIndex={selectedIndex}
         />
       )}

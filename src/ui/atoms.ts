@@ -6,6 +6,8 @@ import {
   Match,
   Order,
   pipe,
+  Predicate,
+  String as Str,
   type Stream,
   Struct,
 } from "effect";
@@ -21,14 +23,6 @@ import type { AutoDevListing } from "../schema.js";
 import type { ListingsSnapshot } from "../services/ListingsService.js";
 
 const runtime = Atom.runtime(Layer.empty);
-
-export const terminalRowsAtom = Atom.readable((get) => {
-  const update = () => get.setSelf(process.stdout.rows ?? 24);
-  process.stdout.on("resize", update);
-  get.addFinalizer(() => process.stdout.off("resize", update));
-  const terminalRows: number = process.stdout.rows ?? 24;
-  return terminalRows;
-});
 
 export type ViewState = {
   search: string;
@@ -47,6 +41,7 @@ export type ViewState = {
   yearSelectMode: boolean;
   fuelFilter: string | null;
   fuelSelectMode: boolean;
+  selectInput: string;
   selectedIndex: number;
 };
 
@@ -67,10 +62,22 @@ export const initialViewState: ViewState = {
   yearSelectMode: false,
   fuelFilter: null,
   fuelSelectMode: false,
+  selectInput: "",
   selectedIndex: 0,
 };
 
 export const viewStateAtom = Atom.make<ViewState>(initialViewState);
+
+const selectItemPredicateAtom = Atom.make((get) =>
+  pipe(
+    get(viewStateAtom).selectInput,
+    Str.toLowerCase,
+    Str.includes,
+    Predicate.mapInput((item: { readonly label: string }) =>
+      Str.toLowerCase(item.label),
+    ),
+  ),
+);
 
 const initialListingsSnapshot: ListingsSnapshot = {
   listings: [],
@@ -122,6 +129,7 @@ export const brandItemsAtom = Atom.make((get) =>
     get(brandsAtom),
     Arr.map((brand) => ({ label: brand, value: brand })),
     Arr.prepend({ label: "All brands", value: null as string | null }),
+    Arr.filter(get(selectItemPredicateAtom)),
   ),
 );
 
@@ -145,6 +153,7 @@ export const modelItemsAtom = Atom.make((get) =>
     get(modelsAtom),
     Arr.map((model) => ({ label: model, value: model })),
     Arr.prepend({ label: "All models", value: null as string | null }),
+    Arr.filter(get(selectItemPredicateAtom)),
   ),
 );
 
@@ -162,6 +171,7 @@ export const yearItemsAtom = Atom.make((get) =>
     get(yearsAtom),
     Arr.map((year) => ({ label: String(year), value: year })),
     Arr.prepend({ label: "All years", value: null as number | null }),
+    Arr.filter(get(selectItemPredicateAtom)),
   ),
 );
 
@@ -187,6 +197,33 @@ export const fuelItemsAtom = Atom.make((get) =>
     get(fuelsAtom),
     Arr.map((fuel) => ({ label: fuel, value: fuel })),
     Arr.prepend({ label: "All fuels", value: null as string | null }),
+    Arr.filter(get(selectItemPredicateAtom)),
+  ),
+);
+
+export const appendSelectCharAction = Atom.fnSync((char: string, ctx) =>
+  ctx.set(
+    viewStateAtom,
+    pipe(
+      ctx(viewStateAtom),
+      Struct.evolve({
+        selectInput: (selectInput) => `${selectInput}${char}`,
+        selectedIndex: () => 0,
+      }),
+    ),
+  ),
+);
+
+export const deleteSelectCharAction = Atom.fnSync((_: undefined, ctx) =>
+  ctx.set(
+    viewStateAtom,
+    pipe(
+      ctx(viewStateAtom),
+      Struct.evolve({
+        selectInput: (selectInput) => selectInput.slice(0, -1),
+        selectedIndex: () => 0,
+      }),
+    ),
   ),
 );
 
@@ -391,6 +428,7 @@ export const openBrandSelectAction = runtime.fn((_: undefined, ctx) =>
           modelSelectMode: () => false,
           fuelSelectMode: () => false,
           yearSelectMode: () => false,
+          selectInput: () => "",
           selectedIndex: () => 0,
         }),
       ),
@@ -402,7 +440,13 @@ export const closeBrandSelectAction = runtime.fn((_: undefined, ctx) =>
   Effect.sync(() =>
     ctx.set(
       viewStateAtom,
-      pipe(ctx(viewStateAtom), Struct.evolve({ brandSelectMode: () => false })),
+      pipe(
+        ctx(viewStateAtom),
+        Struct.evolve({
+          brandSelectMode: () => false,
+          selectInput: () => "",
+        }),
+      ),
     ),
   ),
 );
@@ -417,6 +461,7 @@ export const applyBrandFilterAction = runtime.fn((value: string | null, ctx) =>
           brandFilter: () => value,
           page: () => 0,
           brandSelectMode: () => false,
+          selectInput: () => "",
         }),
       ),
     ),
@@ -523,6 +568,7 @@ export const openModelSelectAction = runtime.fn((_: undefined, ctx) =>
           brandSelectMode: () => false,
           fuelSelectMode: () => false,
           yearSelectMode: () => false,
+          selectInput: () => "",
           selectedIndex: () => 0,
         }),
       ),
@@ -534,7 +580,13 @@ export const closeModelSelectAction = runtime.fn((_: undefined, ctx) =>
   Effect.sync(() =>
     ctx.set(
       viewStateAtom,
-      pipe(ctx(viewStateAtom), Struct.evolve({ modelSelectMode: () => false })),
+      pipe(
+        ctx(viewStateAtom),
+        Struct.evolve({
+          modelSelectMode: () => false,
+          selectInput: () => "",
+        }),
+      ),
     ),
   ),
 );
@@ -549,6 +601,7 @@ export const applyModelFilterAction = runtime.fn((value: string | null, ctx) =>
           modelFilter: () => value,
           page: () => 0,
           modelSelectMode: () => false,
+          selectInput: () => "",
         }),
       ),
     ),
@@ -578,6 +631,7 @@ export const openYearSelectAction = runtime.fn((_: undefined, ctx) =>
           modelSelectMode: () => false,
           brandSelectMode: () => false,
           fuelSelectMode: () => false,
+          selectInput: () => "",
           selectedIndex: () => 0,
         }),
       ),
@@ -589,7 +643,13 @@ export const closeYearSelectAction = runtime.fn((_: undefined, ctx) =>
   Effect.sync(() =>
     ctx.set(
       viewStateAtom,
-      pipe(ctx(viewStateAtom), Struct.evolve({ yearSelectMode: () => false })),
+      pipe(
+        ctx(viewStateAtom),
+        Struct.evolve({
+          yearSelectMode: () => false,
+          selectInput: () => "",
+        }),
+      ),
     ),
   ),
 );
@@ -604,6 +664,7 @@ export const applyYearFilterAction = runtime.fn((value: number | null, ctx) =>
           yearFilter: () => value,
           page: () => 0,
           yearSelectMode: () => false,
+          selectInput: () => "",
         }),
       ),
     ),
@@ -633,6 +694,7 @@ export const openFuelSelectAction = runtime.fn((_: undefined, ctx) =>
           modelSelectMode: () => false,
           brandSelectMode: () => false,
           selectedIndex: () => 0,
+          selectInput: () => "",
           yearSelectMode: () => false,
         }),
       ),
@@ -644,7 +706,13 @@ export const closeFuelSelectAction = runtime.fn((_: undefined, ctx) =>
   Effect.sync(() =>
     ctx.set(
       viewStateAtom,
-      pipe(ctx(viewStateAtom), Struct.evolve({ fuelSelectMode: () => false })),
+      pipe(
+        ctx(viewStateAtom),
+        Struct.evolve({
+          fuelSelectMode: () => false,
+          selectInput: () => "",
+        }),
+      ),
     ),
   ),
 );
@@ -659,6 +727,7 @@ export const applyFuelFilterAction = runtime.fn((value: string | null, ctx) =>
           fuelFilter: () => value,
           page: () => 0,
           fuelSelectMode: () => false,
+          selectInput: () => "",
         }),
       ),
     ),
