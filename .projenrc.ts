@@ -150,6 +150,7 @@ const project = new typescript.TypeScriptAppProject({
   ],
   deps: [
     "@effect/atom-react@4.0.0-beta.100",
+    "@effect/platform-node-shared@4.0.0-beta.100",
     "@effect/platform-node@4.0.0-beta.100",
     "date-fns@^4.1.0",
     "effect@4.0.0-beta.100",
@@ -164,8 +165,6 @@ project.release?.publisher?.publishToNpm({
   trustedPublishing: true,
 });
 
-project.setScript("prepare", "effect-tsgo patch");
-project.setScript("postinstall", "effect-tsgo patch");
 project.postCompileTask.exec("chmod +x lib/src/main.js");
 
 const generatedTsConfig = project.tryFindObjectFile("tsconfig.json");
