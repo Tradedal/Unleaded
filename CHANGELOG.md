@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/Tradedal/Unleaded/compare/v0.1.4...v0.1.5) (2026-09-10)
+
+
+### Bug Fixes
+
+* improve CLI demo framing ([#18](https://github.com/Tradedal/Unleaded/issues/18)) ([11f2f6d](https://github.com/Tradedal/Unleaded/commit/11f2f6db7f1649aa07c590d62a105a86115dd5e0))
+
 ## [0.1.4](https://github.com/Tradedal/Unleaded/compare/v0.1.3...v0.1.4) (2026-09-10)
 
 
