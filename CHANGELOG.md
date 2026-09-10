@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4-dev.2](https://github.com/Tradedal/Unleaded/compare/v0.1.4-dev.1...v0.1.4-dev.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* bound selector rendering ([#13](https://github.com/Tradedal/Unleaded/issues/13)) ([4bf6834](https://github.com/Tradedal/Unleaded/commit/4bf683463a0adb26c1c1ad52f7fed716329c474b))
+
 ## [0.1.4-dev.1](https://github.com/Tradedal/Unleaded/compare/v0.1.4-dev...v0.1.4-dev.1) (2026-09-10)
 
 
