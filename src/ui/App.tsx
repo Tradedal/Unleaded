@@ -46,7 +46,7 @@ type SelectItem<T extends string | number | null> = {
   value: T;
 };
 
-const MENU_LIMIT = 20;
+const MENU_LIMIT = 8;
 
 const selectColor = (selected: boolean): "cyan" | undefined =>
   Match.value(selected).pipe(
@@ -485,6 +485,12 @@ export const App: React.FC = () => {
   const modelSelectMode = view.modelSelectMode;
   const yearSelectMode = view.yearSelectMode;
   const fuelSelectMode = view.fuelSelectMode;
+  const hasOverlay =
+    brandSelectMode ||
+    modelSelectMode ||
+    yearSelectMode ||
+    fuelSelectMode ||
+    searchMode;
   const loading = useAtomValue(loadingAtom);
   const loadFailed = useAtomValue(loadFailedAtom);
   const loadedCount = useAtomValue(loadedCountAtom);
@@ -635,17 +641,23 @@ export const App: React.FC = () => {
           <Text color="yellow">Search: {searchInput}█</Text>
         </Box>
       )}
-      <TableHeader />
-      {pipe(
-        visible,
-        Arr.map((listing) => (
-          <ListingRow key={listing.vin} listing={listing} />
-        )),
-      )}
-      {Match.value({ loadFailed, visibleCount: visible.length }).pipe(
-        Match.when({ loadFailed: true }, () => null),
-        Match.when({ visibleCount: 0 }, () => <Text dimColor>No results</Text>),
-        Match.orElse(() => null),
+      {!hasOverlay && (
+        <>
+          <TableHeader />
+          {pipe(
+            visible,
+            Arr.map((listing) => (
+              <ListingRow key={listing.vin} listing={listing} />
+            )),
+          )}
+          {Match.value({ loadFailed, visibleCount: visible.length }).pipe(
+            Match.when({ loadFailed: true }, () => null),
+            Match.when({ visibleCount: 0 }, () => (
+              <Text dimColor>No results</Text>
+            )),
+            Match.orElse(() => null),
+          )}
+        </>
       )}
     </Box>
   );
