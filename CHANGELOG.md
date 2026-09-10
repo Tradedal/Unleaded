@@ -1,0 +1,9 @@
+# Changelog
+
+## [0.1.1](https://github.com/Tradedal/Unleaded/compare/v0.1.0...v0.1.1) (2026-09-10)
+
+
+### Features
+
+* prepare Unleaded for public release ([1b33f1d](https://github.com/Tradedal/Unleaded/commit/1b33f1de8181dcd4e0d67d132e5a2f9899dd0b4f))
+* prepare Unleaded for public release ([5955011](https://github.com/Tradedal/Unleaded/commit/5955011b062d0d25db1a38340b85b80161d4ec55))
