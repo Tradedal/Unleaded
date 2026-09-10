@@ -1,13 +1,51 @@
-# Defensive Reflex
+# AGENTS.md
 
-Avoid defaulting to defensive coding patterns to resolve uncertainty. Excessive guards, fallbacks, speculative branches, and placeholder states reduce reliability and long-term maintainability. Uncertainty must be addressed at the model or schema boundary, not absorbed into control flow.
+## Annoying phrases
+Never use or construct
+- "So yes,": this is a dumb rehashing
 
-When introducing a new service, tag, or layer, define the service contract once and provide a neutral default. Per-variant or environment-specific behavior belongs in layers, not inline conditionals or fallback branches. Do not introduce throw-based placeholders, ad-hoc interfaces, or speculative helper abstractions.
+## Scope of work
 
-# Declarative Discipline
+Always parse carefully user's request into an explicit scope. Always assume scope is narrower than you want to make it. There are no cases for wide repo changes, ever.
 
-Do not refactor working declarative flows merely to conform to a stylistic notion of “more declarative.” When a pipeline already follows a clear, single-flow structure without guards or fallbacks, preserve its shape and address only the specific issue identified.
-Requests to continue or extend incomplete work must remain within the declared abstraction surface. Missing infrastructure or dependencies must be reported rather than invented. Declarative discipline means removing hacks and compensating logic, not restructuring code for appearance.
+Parse the task input into the scope
+- Requested outcome or change
+- Allowed files, modules, areas
+- Forbidden actions and limits
+
+Never expand scope into existing broken imports, failing tests, nearby implementation patterns, deleted prior code, or obvious next steps are not scope expansion triggers.
+
+Existing imports can be dangerous derailment triggers. Deleted code must get ignored unless the user explicitly names it as a reference. Never reconstruct deleted implementations from memory, failing tests, generated diagnostics, surrounding call sites, or prior branch shape. Treat deleted symbols as intentionally absent until the user provides the reference or asks for implementation.
+
+Remember to always assume NARROW scope.
+
+## Specification language guard
+
+Avoid possession-style ('owns') and edge-jargon ('boundary') wording across all content and code. Use neutral terms: responsible, assigned,contract, path, graph and so on.
+
+## Fragmented Coding Guardrail
+
+Prohibited patterns: pre-staging, consts soup, unrelated local cosnts scatter, excessive helpering and wrapping.
+
+Effect logic belongs in continuous, visible blocks. The reader should see the data flow, validation, control path, and final Effect where the work occurs.
+
+The codebase uses declarative Effect composition and data transforms: you must never attempt "staged assembly". Logic should remain inside the pipeline or expression that express the operation. Artificial pre-staging through unrelated local constants is not a valid way to make code pass lint rules.
+
+Loose const collections are invalid code shape. A block that declares a bag of values, then later assembles them into a call, hides the actual flow and fragments the logic. This applies even when the surrounding code already uses that style.
+
+Helper functions are reserved for real domain concepts, shared behavior, or named concepts with standalone value. They are not a place to move branches, temporary values, or Effect steps out of sight.
+
+Inline assembly has the same problem as loose constants. Moving fragments into call arguments without a clear local flow still obscures the operation.
+
+Final returns must not hide composed transforms. Do not return `pipe(...)`, `Ar.map/filterMap/reduce(...)`, native array transforms, object literals, or other computed assemblies inline when the return shape matters. Bind the final contract-shaped value to a local with an explicit domain type, then return that value. This is allowed only for the final operation result, not as a bag of staged inputs.
+
+Existing const-soup flow should be cleaned before additional development in that area. The corrected form keeps the Effect pipeline visible, keeps decisions local to the operation, and removes artificial staging.
+
+One special warning: do not insert manually assembled schemas that "narrow" something to satisfy requirements, or serve as validators for "business logic" requirements. You can use Data.taggedEnum or ADT pattern for actions or decisions, never manually copy/pasted pieces of auto-generated schemas.
+
+## Effect graph guardrail
+
+All effect services, Atoms, projections, and reactivity share one Layer graph and runtime. Side paths, split contexts, and alternate state paths are prohibited.
 
 # Non-Invention Guardrail
 
@@ -58,15 +96,15 @@ Avoid helper extraction driven by aesthetics rather than documented need.
 
 Never introduce defensive branches, fallback payloads, or speculative states to mask uncertainty. Address uncertainty by correcting the model, schema, or upstream contract.
 
-# Compile Check
+## Repository Docs
 
-After meaningful edits, run the file-level compile check instead of a full project build. This is the only supported way to validate changes during development.
+Use these guides for validation and implementation rules:
 
-Use the provided script (adjust as needed to run properly):
+- `design/testing-spec.md`
+- `design/linting-spec.md`
 
-```bash
-export SHELL=/bin/zsh
-~/.n/bin/node ./check-files.ts path-to-file
-```
+For this repo, testing and lint validation is single-package:
 
-Run this check before reporting completion. Treat any error as blocking. Do not suppress failures with guards, fallback logic, type assertions, or temporary workarounds.
+- `./node_modules/.bin/tsgo -p tsconfig.json --noEmit`
+- `./node_modules/.bin/biome lint ...`
+- `./node_modules/.bin/vitest run`

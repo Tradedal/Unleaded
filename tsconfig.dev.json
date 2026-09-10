@@ -27,6 +27,7 @@
     "stripInternal": true,
     "target": "ESNext",
     "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     "moduleDetection": "force",
     "verbatimModuleSyntax": true,
     "noImplicitOverride": true,
@@ -59,6 +60,6 @@
   ],
   "exclude": [
     "node_modules",
-    "check-files.ts"
+    "src/**/*.test.ts"
   ]
 }

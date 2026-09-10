@@ -1,12 +1,23 @@
 {
   "dependencies": [
     {
-      "name": "@stylistic/eslint-plugin",
-      "version": "^2",
+      "name": "@biomejs/biome",
+      "version": "2.4.12",
       "type": "build"
     },
     {
-      "name": "@types/jest",
+      "name": "@catenarycloud/linteffect",
+      "version": "0.0.7-dev.2",
+      "type": "build"
+    },
+    {
+      "name": "@effect/language-service",
+      "version": "^0.86.2",
+      "type": "build"
+    },
+    {
+      "name": "@effect/tsgo",
+      "version": "0.14.0",
       "type": "build"
     },
     {
@@ -19,13 +30,8 @@
       "type": "build"
     },
     {
-      "name": "@typescript-eslint/eslint-plugin",
-      "version": "^8",
-      "type": "build"
-    },
-    {
-      "name": "@typescript-eslint/parser",
-      "version": "^8",
+      "name": "@typescript/native-preview",
+      "version": "7.0.0-dev.20250906.1",
       "type": "build"
     },
     {
@@ -34,33 +40,7 @@
       "type": "build"
     },
     {
-      "name": "eslint-import-resolver-typescript",
-      "type": "build"
-    },
-    {
-      "name": "eslint-plugin-import",
-      "type": "build"
-    },
-    {
-      "name": "eslint",
-      "version": "^9",
-      "type": "build"
-    },
-    {
-      "name": "jest",
-      "type": "build"
-    },
-    {
-      "name": "jest-junit",
-      "version": "^16",
-      "type": "build"
-    },
-    {
       "name": "projen",
-      "type": "build"
-    },
-    {
-      "name": "ts-jest",
       "type": "build"
     },
     {
@@ -68,82 +48,27 @@
       "type": "build"
     },
     {
+      "name": "tsx",
+      "version": "^4.23.13",
+      "type": "build"
+    },
+    {
       "name": "typescript",
       "type": "build"
     },
     {
-      "name": "@effect-atom/atom-react",
-      "version": "^0.4.4",
-      "type": "runtime"
+      "name": "vitest",
+      "version": "^3.2.4",
+      "type": "build"
     },
     {
-      "name": "@effect-atom/atom",
-      "version": "^0.4.11",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/cli",
-      "version": "^0.73.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/cluster",
-      "version": "^0.56.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/experimental",
-      "version": "^0.58.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/language-service",
-      "version": "^0.62.5",
+      "name": "@effect/atom-react",
+      "version": "4.0.0-beta.100",
       "type": "runtime"
     },
     {
       "name": "@effect/platform-node",
-      "version": "^0.104.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/platform",
-      "version": "^0.94.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/printer-ansi",
-      "version": "^0.47.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/printer",
-      "version": "^0.47.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/rpc",
-      "version": "^0.73.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/sql",
-      "version": "^0.49.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/typeclass",
-      "version": "^0.38.0",
-      "type": "runtime"
-    },
-    {
-      "name": "@effect/workflow",
-      "version": "^0.16.0",
-      "type": "runtime"
-    },
-    {
-      "name": "cli-table3",
-      "version": "^0.6.5",
+      "version": "4.0.0-beta.100",
       "type": "runtime"
     },
     {
@@ -153,11 +78,11 @@
     },
     {
       "name": "effect",
-      "version": "^3.19.13",
+      "version": "4.0.0-beta.100",
       "type": "runtime"
     },
     {
-      "name": "ink-select-input",
+      "name": "ink-spinner",
       "version": "^5.0.0",
       "type": "runtime"
     },
@@ -168,7 +93,12 @@
     },
     {
       "name": "react",
-      "version": "^19.2.3",
+      "version": "^19.2.4",
+      "type": "runtime"
+    },
+    {
+      "name": "scheduler",
+      "version": "^0.27.0",
       "type": "runtime"
     }
   ],
