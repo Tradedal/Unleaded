@@ -99,6 +99,12 @@ const SelectMenu = <T extends string | number | null>({
               </Text>
             )),
           )}
+          {Match.value(windowStart + MENU_LIMIT < items.length).pipe(
+            Match.when(true, () => (
+              <Text bold color="cyan">{"  ↓"}</Text>
+            )),
+            Match.orElse(() => null),
+          )}
         </Box>
       );
     }),
