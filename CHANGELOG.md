@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/Tradedal/Unleaded/compare/v0.1.1...v0.1.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* align npm publishing with trusted release flow ([260e6ae](https://github.com/Tradedal/Unleaded/commit/260e6aec686a9f9ce387e9a0b8e75cfb8da148ca))
+* align npm publishing with trusted release flow ([5891a40](https://github.com/Tradedal/Unleaded/commit/5891a405f70950d8908376c1f31a59296dbce44f))
+
 ## [0.1.1](https://github.com/Tradedal/Unleaded/compare/v0.1.0...v0.1.1) (2026-09-10)
 
 
