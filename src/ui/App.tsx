@@ -17,6 +17,7 @@ import {
   loadingAtom,
   loadingStatusAtom,
   modelItemsAtom,
+  terminalPageSize,
   viewStateAtom,
   visibleAtom,
   yearItemsAtom,
@@ -77,10 +78,14 @@ const SelectMenu = <T extends string | number | null>({
       </Box>
     )),
     Match.orElse(() => {
-      const maxStart = Math.max(0, items.length - MENU_LIMIT);
+      const menuLimit = Math.max(
+        1,
+        Math.min(MENU_LIMIT, terminalPageSize),
+      );
+      const maxStart = Math.max(0, items.length - menuLimit);
       const windowStart = Math.max(
         0,
-        Math.min(selectedIndex - Math.floor(MENU_LIMIT / 2), maxStart),
+        Math.min(selectedIndex - Math.floor(menuLimit / 2), maxStart),
       );
       return (
         <Box marginBottom={1} flexDirection="column">
@@ -88,7 +93,7 @@ const SelectMenu = <T extends string | number | null>({
           {pipe(
             items,
             Arr.drop(windowStart),
-            Arr.take(MENU_LIMIT),
+            Arr.take(menuLimit),
             Arr.map((item, index) => (
               <Text
                 key={item.label}
@@ -485,6 +490,12 @@ export const App: React.FC = () => {
   const modelSelectMode = view.modelSelectMode;
   const yearSelectMode = view.yearSelectMode;
   const fuelSelectMode = view.fuelSelectMode;
+  const hasOverlay =
+    brandSelectMode ||
+    modelSelectMode ||
+    yearSelectMode ||
+    fuelSelectMode ||
+    searchMode;
   const loading = useAtomValue(loadingAtom);
   const loadFailed = useAtomValue(loadFailedAtom);
   const loadedCount = useAtomValue(loadedCountAtom);
@@ -633,17 +644,23 @@ export const App: React.FC = () => {
           <Text color="yellow">Search: {searchInput}█</Text>
         </Box>
       )}
-      <TableHeader />
-      {pipe(
-        visible,
-        Arr.map((listing) => (
-          <ListingRow key={listing.vin} listing={listing} />
-        )),
-      )}
-      {Match.value({ loadFailed, visibleCount: visible.length }).pipe(
-        Match.when({ loadFailed: true }, () => null),
-        Match.when({ visibleCount: 0 }, () => <Text dimColor>No results</Text>),
-        Match.orElse(() => null),
+      {!hasOverlay && (
+        <>
+          <TableHeader />
+          {pipe(
+            visible,
+            Arr.map((listing) => (
+              <ListingRow key={listing.vin} listing={listing} />
+            )),
+          )}
+          {Match.value({ loadFailed, visibleCount: visible.length }).pipe(
+            Match.when({ loadFailed: true }, () => null),
+            Match.when({ visibleCount: 0 }, () => (
+              <Text dimColor>No results</Text>
+            )),
+            Match.orElse(() => null),
+          )}
+        </>
       )}
     </Box>
   );
